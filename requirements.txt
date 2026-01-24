@@ -1,0 +1,18 @@
+# Naari Virtual Try-On - Dependencies
+
+# Core image processing
+Pillow>=9.0.0
+numpy>=1.21.0
+scipy>=1.7.0
+
+# Background removal
+rembg>=2.0.50
+
+# Google Generative AI (Imagen)
+google-genai>=0.3.0
+
+# MediaPipe for pose/landmark detection
+mediapipe>=0.10.0
+
+# Optional: GPU acceleration for rembg (uncomment if needed)
+# onnxruntime-gpu>=1.15.0
