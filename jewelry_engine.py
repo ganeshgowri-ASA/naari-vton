@@ -33,23 +33,31 @@ except ImportError as e:
     logger.warning(f"cvzone not available: {e}. Install with: pip install cvzone")
 
 # MediaPipe imports with HuggingFace Spaces compatibility
-# Using 'from mediapipe.python.solutions import ...' format for HF compatibility
+# Try standard import first, then fallback to mediapipe.python.solutions
 MEDIAPIPE_AVAILABLE = False
+mp_face_mesh = None
+mp_drawing = None
+
 try:
-    from mediapipe.python.solutions import face_mesh as mp_face_mesh
-    from mediapipe.python.solutions import drawing_utils as mp_drawing
+    # Standard import (works on most systems)
+    import mediapipe as mp
+    mp_face_mesh = mp.solutions.face_mesh
+    mp_drawing = mp.solutions.drawing_utils
     MEDIAPIPE_AVAILABLE = True
-    logger.info("MediaPipe face_mesh loaded successfully (HuggingFace compatible import)")
-except ImportError:
+    logger.info("MediaPipe loaded with standard import")
+except Exception:
+    # Fallback for HuggingFace Spaces or other environments
     try:
-        # Fallback to standard import
-        import mediapipe as mp
-        mp_face_mesh = mp.solutions.face_mesh
-        mp_drawing = mp.solutions.drawing_utils
+        from mediapipe.python.solutions import face_mesh as mp_face_mesh_module
+        from mediapipe.python.solutions import drawing_utils as mp_drawing_module
+        mp_face_mesh = mp_face_mesh_module
+        mp_drawing = mp_drawing_module
         MEDIAPIPE_AVAILABLE = True
-        logger.info("MediaPipe loaded with standard import")
-    except ImportError as e:
+        logger.info("MediaPipe loaded with HuggingFace compatible import (mediapipe.python.solutions)")
+    except Exception as e:
         logger.warning(f"MediaPipe not available: {e}. Install with: pip install mediapipe")
+        mp_face_mesh = None
+        mp_drawing = None
 
 
 class JewelryEngine:
