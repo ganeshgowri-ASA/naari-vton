@@ -4,14 +4,21 @@
 # Web Interface
 gradio>=4.0.0
 
+# HuggingFace Spaces
+spaces>=0.19.0
+
 # Computer Vision & AI
 mediapipe>=0.10.0
+cvzone>=1.6.1
 opencv-python-headless>=4.8.0
 numpy>=1.24.0
 Pillow>=10.0.0
 
-# Background Removal (optional, for jewelry isolation)
+# Background Removal (for jewelry isolation)
 rembg>=2.0.50
 
 # Image Processing
 scipy>=1.11.0
+
+# For GPU support on HuggingFace Spaces
+torch>=2.0.0
