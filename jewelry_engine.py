@@ -755,14 +755,15 @@ def remove_jewelry_background(jewelry_image: Union[Image.Image, np.ndarray]) -> 
         PIL Image with transparent background (RGBA)
     """
     try:
-        from rembg import remove
-
+        # DISABLED: rembg takes too long on CPU (16+ minutes)
+        # Skip background removal for better performance
+        # from rembg import remove
+        
         if isinstance(jewelry_image, np.ndarray):
             jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
-
-        result = remove(jewelry_image)
-        return result
-
+        
+        # Return image as RGBA without background removal
+        return jewelry_image.convert('RGBA')
     except ImportError:
         logger.warning("rembg not installed. Install with: pip install rembg")
         if isinstance(jewelry_image, np.ndarray):
