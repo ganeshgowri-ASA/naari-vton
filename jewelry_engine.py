@@ -746,34 +746,28 @@ def get_engine() -> JewelryEngine:
 
 def remove_jewelry_background(jewelry_image: Union[Image.Image, np.ndarray]) -> Image.Image:
     """
-    Remove background from jewelry image using rembg.
+    Convert jewelry image to RGBA format.
+
+    NOTE: rembg background removal is disabled for performance reasons.
+    On CPU basic hardware, rembg takes 16+ minutes which is unacceptable.
+    This function now simply converts the input to RGBA without background removal.
+    Users should upload jewelry images that already have transparent backgrounds.
 
     Args:
         jewelry_image: PIL Image or numpy array of the jewelry
 
     Returns:
-        PIL Image with transparent background (RGBA)
+        PIL Image in RGBA format (no background removal performed)
     """
-    try:
-        from rembg import remove
+    # Skip rembg entirely - too slow on CPU (16+ minutes)
+    # from rembg import remove  # DISABLED for performance
 
-        if isinstance(jewelry_image, np.ndarray):
-            jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
+    if isinstance(jewelry_image, np.ndarray):
+        jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
 
-        result = remove(jewelry_image)
-        return result
-
-    except ImportError:
-        logger.warning("rembg not installed. Install with: pip install rembg")
-        if isinstance(jewelry_image, np.ndarray):
-            jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
-        return jewelry_image.convert('RGBA')
-
-    except Exception as e:
-        logger.error(f"Background removal error: {str(e)}")
-        if isinstance(jewelry_image, np.ndarray):
-            jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
-        return jewelry_image.convert('RGBA')
+    # Just convert to RGBA and return (no background removal)
+    logger.info("Background removal skipped for performance - returning image as RGBA")
+    return jewelry_image.convert('RGBA')
 
 
 def apply_jewelry(person_image: Union[Image.Image, np.ndarray, str],
