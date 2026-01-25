@@ -32,22 +32,49 @@ try:
 except ImportError as e:
     logger.warning(f"cvzone not available: {e}. Install with: pip install cvzone")
 
-# MediaPipe imports - use HuggingFace Spaces compatible import method
-# Note: Do NOT use 'import mediapipe as mp' then 'mp.solutions.*' as it fails on HuggingFace
+# MediaPipe imports - try multiple import approaches for compatibility
 MEDIAPIPE_AVAILABLE = False
 mp_face_mesh = None
 mp_drawing = None
+_mediapipe_import_method = None
 
+# Try multiple import methods for MediaPipe compatibility
+# Method 1: Standard import (works in most environments)
 try:
-    # HuggingFace Spaces compatible import (works on all environments)
-    from mediapipe.python.solutions import face_mesh as mp_face_mesh
-    from mediapipe.python.solutions import drawing_utils as mp_drawing
+    import mediapipe as mp
+    mp_face_mesh = mp.solutions.face_mesh
+    mp_drawing = mp.solutions.drawing_utils
     MEDIAPIPE_AVAILABLE = True
-    logger.info("MediaPipe loaded successfully (mediapipe.python.solutions)")
-except Exception as e:
-    logger.warning(f"MediaPipe not available: {e}. Install with: pip install mediapipe")
-    mp_face_mesh = None
-    mp_drawing = None
+    _mediapipe_import_method = "standard (mp.solutions)"
+    logger.info("MediaPipe loaded successfully using standard import (mp.solutions)")
+except Exception as e1:
+    logger.warning(f"MediaPipe standard import failed: {e1}")
+
+    # Method 2: Direct solutions import (alternative path)
+    try:
+        from mediapipe.python.solutions import face_mesh as mp_face_mesh
+        from mediapipe.python.solutions import drawing_utils as mp_drawing
+        MEDIAPIPE_AVAILABLE = True
+        _mediapipe_import_method = "mediapipe.python.solutions"
+        logger.info("MediaPipe loaded successfully using mediapipe.python.solutions")
+    except Exception as e2:
+        logger.warning(f"MediaPipe python.solutions import failed: {e2}")
+
+        # Method 3: Try solutions directly
+        try:
+            from mediapipe import solutions
+            mp_face_mesh = solutions.face_mesh
+            mp_drawing = solutions.drawing_utils
+            MEDIAPIPE_AVAILABLE = True
+            _mediapipe_import_method = "mediapipe.solutions direct"
+            logger.info("MediaPipe loaded successfully using mediapipe.solutions direct import")
+        except Exception as e3:
+            logger.warning(f"All MediaPipe import methods failed. Facial jewelry features disabled.")
+            logger.warning(f"  Standard: {e1}")
+            logger.warning(f"  Python.solutions: {e2}")
+            logger.warning(f"  Solutions direct: {e3}")
+            mp_face_mesh = None
+            mp_drawing = None
 
 
 class JewelryEngine:
@@ -900,6 +927,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"\ncvzone available: {CVZONE_AVAILABLE}")
     print(f"MediaPipe available: {MEDIAPIPE_AVAILABLE}")
+    if MEDIAPIPE_AVAILABLE:
+        print(f"MediaPipe import method: {_mediapipe_import_method}")
     print("\nPose Landmarks Used (cvzone PoseDetector):")
     print("  - 9: left_mouth (neck reference)")
     print("  - 10: right_mouth (neck reference)")
