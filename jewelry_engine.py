@@ -1,20 +1,20 @@
 """
-Naari Studio - Jewelry Virtual Try-On Engine
-Uses cvzone PoseModule and OpenCV for ZeroGPU compatibility.
+Naari Studio - Jewelry Virtual Try-On Engine (SIMPLIFIED)
 
-NO MEDIAPIPE DEPENDENCY - Works on HuggingFace ZeroGPU Spaces.
+Uses ONLY OpenCV Haar Cascades for all jewelry positioning.
+NO MEDIAPIPE, NO CVZONE POSE DETECTION - 100% ZeroGPU compatible.
 
-Supported jewelry types:
-- Necklace: Uses cvzone pose landmarks 11, 12 for shoulder positioning
-- Earrings: Uses OpenCV face detection with geometric estimation
-- Maang Tikka: Forehead center positioning via face geometry
+Simplified approach:
+- Necklace: Detect face, place necklace 20% below chin center
+- Earrings: Face detection with geometric earlobe estimation
+- Maang Tikka: Forehead center via face geometry
 - Nose Ring: Nose landmark via face geometry
 """
 
 import cv2
 import numpy as np
 from PIL import Image
-from typing import Tuple, Optional, Union, List
+from typing import Tuple, Optional, Union
 import logging
 import math
 import os
@@ -23,19 +23,10 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# cvzone imports for pose detection and overlay
-CVZONE_AVAILABLE = False
-try:
-    from cvzone.PoseModule import PoseDetector
-    import cvzone
-    CVZONE_AVAILABLE = True
-    logger.info("cvzone PoseModule loaded successfully")
-except ImportError as e:
-    logger.warning(f"cvzone not available: {e}. Install with: pip install cvzone")
-
-# OpenCV Face Detection - ZeroGPU compatible (no MediaPipe needed)
+# OpenCV Face Detection - ZeroGPU compatible
 FACE_CASCADE = None
 EYE_CASCADE = None
+
 
 def _init_cascades():
     """Initialize OpenCV Haar Cascades for face/eye detection."""
@@ -45,7 +36,6 @@ def _init_cascades():
         return True
 
     try:
-        # Try to find cascade files in OpenCV data directory
         cv2_data_path = cv2.data.haarcascades
 
         face_cascade_path = os.path.join(cv2_data_path, 'haarcascade_frontalface_default.xml')
@@ -68,217 +58,29 @@ def _init_cascades():
         logger.error(f"Failed to load cascades: {e}")
         return False
 
+
 # Initialize cascades at module load
 _init_cascades()
 
 
-class FaceDetector:
-    """
-    OpenCV-based face detector for facial jewelry positioning.
-    Uses Haar Cascades - fully compatible with ZeroGPU.
-    No MediaPipe dependency.
-    """
-
-    def __init__(self, scale_factor: float = 1.1, min_neighbors: int = 5):
-        """
-        Initialize the face detector.
-
-        Args:
-            scale_factor: Scale factor for cascade detection
-            min_neighbors: Minimum neighbors for cascade detection
-        """
-        self.scale_factor = scale_factor
-        self.min_neighbors = min_neighbors
-        _init_cascades()
-
-    def detect_face(self, cv2_image: np.ndarray) -> Optional[dict]:
-        """
-        Detect face and estimate facial landmarks geometrically.
-
-        Args:
-            cv2_image: OpenCV image (BGR)
-
-        Returns:
-            Dictionary with face bounds and estimated landmark positions
-        """
-        if FACE_CASCADE is None:
-            logger.error("Face cascade not loaded")
-            return None
-
-        try:
-            # Convert to grayscale for detection
-            gray = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2GRAY)
-
-            # Detect faces
-            faces = FACE_CASCADE.detectMultiScale(
-                gray,
-                scaleFactor=self.scale_factor,
-                minNeighbors=self.min_neighbors,
-                minSize=(80, 80),
-                flags=cv2.CASCADE_SCALE_IMAGE
-            )
-
-            if len(faces) == 0:
-                return None
-
-            # Take the largest face
-            face = max(faces, key=lambda f: f[2] * f[3])
-            x, y, w, h = face
-
-            # Calculate facial landmark estimates based on face geometry
-            # These are proportional estimates based on average face proportions
-
-            landmarks = {
-                'face_bounds': (x, y, w, h),
-                'face_center': (x + w // 2, y + h // 2),
-                'face_width': w,
-                'face_height': h,
-            }
-
-            # Ear positions - at sides of face, about 40% down from top
-            # Ears are typically slightly outside the face bounding box
-            ear_y = y + int(h * 0.40)
-            landmarks['left_ear'] = (x - int(w * 0.05), ear_y)
-            landmarks['right_ear'] = (x + w + int(w * 0.05), ear_y)
-
-            # Earlobe positions - lower, where earrings hang
-            earlobe_y = y + int(h * 0.50)
-            landmarks['left_earlobe'] = (x - int(w * 0.02), earlobe_y)
-            landmarks['right_earlobe'] = (x + w + int(w * 0.02), earlobe_y)
-
-            # Forehead center - top center of face, slightly inside the box
-            landmarks['forehead'] = (x + w // 2, y + int(h * 0.12))
-
-            # Hairline - very top center
-            landmarks['hairline'] = (x + w // 2, y + int(h * 0.05))
-
-            # Nose tip - center of face, about 60% down
-            landmarks['nose_tip'] = (x + w // 2, y + int(h * 0.60))
-
-            # Nose bottom - slightly lower
-            landmarks['nose_bottom'] = (x + w // 2, y + int(h * 0.68))
-
-            # Left and right nostrils
-            nostril_offset = int(w * 0.10)
-            nostril_y = y + int(h * 0.65)
-            landmarks['left_nostril'] = (x + w // 2 - nostril_offset, nostril_y)
-            landmarks['right_nostril'] = (x + w // 2 + nostril_offset, nostril_y)
-
-            # Septum - center bottom of nose
-            landmarks['septum'] = (x + w // 2, y + int(h * 0.70))
-
-            # Eye positions for angle calculation
-            eye_y = y + int(h * 0.35)
-            eye_offset = int(w * 0.20)
-            landmarks['left_eye'] = (x + w // 2 - eye_offset, eye_y)
-            landmarks['right_eye'] = (x + w // 2 + eye_offset, eye_y)
-
-            # Detect eyes for better angle calculation
-            if EYE_CASCADE is not None:
-                face_roi = gray[y:y+h, x:x+w]
-                eyes = EYE_CASCADE.detectMultiScale(
-                    face_roi,
-                    scaleFactor=1.1,
-                    minNeighbors=10,
-                    minSize=(20, 20)
-                )
-
-                if len(eyes) >= 2:
-                    # Sort eyes by x position (left to right)
-                    eyes = sorted(eyes, key=lambda e: e[0])
-
-                    # Take first two eyes
-                    left_eye = eyes[0]
-                    right_eye = eyes[1]
-
-                    # Calculate eye centers (relative to full image)
-                    landmarks['left_eye'] = (
-                        x + left_eye[0] + left_eye[2] // 2,
-                        y + left_eye[1] + left_eye[3] // 2
-                    )
-                    landmarks['right_eye'] = (
-                        x + right_eye[0] + right_eye[2] // 2,
-                        y + right_eye[1] + right_eye[3] // 2
-                    )
-
-                    # Recalculate ear positions based on eye positions
-                    eye_mid_y = (landmarks['left_eye'][1] + landmarks['right_eye'][1]) // 2
-                    landmarks['left_ear'] = (x - int(w * 0.05), eye_mid_y + int(h * 0.10))
-                    landmarks['right_ear'] = (x + w + int(w * 0.05), eye_mid_y + int(h * 0.10))
-                    landmarks['left_earlobe'] = (x - int(w * 0.02), eye_mid_y + int(h * 0.18))
-                    landmarks['right_earlobe'] = (x + w + int(w * 0.02), eye_mid_y + int(h * 0.18))
-
-            # Calculate face angle from eye positions
-            left_eye = landmarks['left_eye']
-            right_eye = landmarks['right_eye']
-            delta_x = right_eye[0] - left_eye[0]
-            delta_y = right_eye[1] - left_eye[1]
-            landmarks['face_angle'] = math.degrees(math.atan2(delta_y, delta_x))
-
-            return landmarks
-
-        except Exception as e:
-            logger.error(f"Face detection error: {e}")
-            return None
-
-
 class JewelryEngine:
     """
-    Core engine for jewelry virtual try-on.
+    Simplified Jewelry Engine using ONLY OpenCV face detection.
 
-    Uses cvzone PoseModule for body pose detection (necklace positioning)
-    and OpenCV Haar Cascades for facial jewelry (earrings, tikka, nose ring).
-
-    NO MEDIAPIPE DEPENDENCY - ZeroGPU compatible.
+    NO MEDIAPIPE, NO CVZONE POSE - Works everywhere including ZeroGPU.
     """
 
-    # cvzone PoseDetector landmark indices
-    POSE_LEFT_MOUTH = 9
-    POSE_RIGHT_MOUTH = 10
-    POSE_LEFT_SHOULDER = 11
-    POSE_RIGHT_SHOULDER = 12
-    POSE_LEFT_EAR = 7
-    POSE_RIGHT_EAR = 8
-    POSE_NOSE = 0
-
-    def __init__(self,
-                 pose_detection_confidence: float = 0.7,
-                 pose_tracking_confidence: float = 0.7,
-                 face_scale_factor: float = 1.1,
-                 face_min_neighbors: int = 5):
+    def __init__(self, scale_factor: float = 1.1, min_neighbors: int = 4):
         """
         Initialize the Jewelry Engine.
 
         Args:
-            pose_detection_confidence: Minimum confidence for pose detection
-            pose_tracking_confidence: Minimum confidence for pose tracking
-            face_scale_factor: Scale factor for face cascade detection
-            face_min_neighbors: Min neighbors for face cascade detection
+            scale_factor: Scale factor for face cascade detection
+            min_neighbors: Min neighbors for face cascade detection
         """
-        self.pose_detection_confidence = pose_detection_confidence
-        self.pose_tracking_confidence = pose_tracking_confidence
-
-        # Initialize models (lazy loading for pose, immediate for face)
-        self._pose_detector = None
-        self._face_detector = FaceDetector(face_scale_factor, face_min_neighbors)
-
-    @property
-    def pose_detector(self):
-        """Lazy initialization of cvzone PoseDetector."""
-        if self._pose_detector is None:
-            if not CVZONE_AVAILABLE:
-                raise ImportError("cvzone is required for pose detection. Install with: pip install cvzone")
-            self._pose_detector = PoseDetector(
-                staticMode=True,
-                modelComplexity=1,
-                smoothLandmarks=True,
-                enableSegmentation=False,
-                smoothSegmentation=True,
-                detectionCon=self.pose_detection_confidence,
-                trackCon=self.pose_tracking_confidence
-            )
-            logger.info("PoseDetector initialized")
-        return self._pose_detector
+        self.scale_factor = scale_factor
+        self.min_neighbors = min_neighbors
+        _init_cascades()
 
     def _pil_to_cv2(self, pil_image: Image.Image) -> np.ndarray:
         """Convert PIL Image to OpenCV format (BGR)."""
@@ -299,20 +101,91 @@ class JewelryEngine:
         rgba_array = np.array(pil_image.convert('RGBA'))
         return cv2.cvtColor(rgba_array, cv2.COLOR_RGBA2BGRA)
 
-    def _calculate_shoulder_angle(self, left_shoulder: Tuple[int, int],
-                                   right_shoulder: Tuple[int, int]) -> float:
-        """Calculate shoulder tilt angle."""
-        delta_x = right_shoulder[0] - left_shoulder[0]
-        delta_y = right_shoulder[1] - left_shoulder[1]
-        return math.degrees(math.atan2(delta_y, delta_x))
+    def detect_face(self, cv2_image: np.ndarray) -> Optional[dict]:
+        """
+        Detect face and estimate facial landmarks geometrically.
 
-    def _resize_jewelry_cv2(self, jewelry: np.ndarray,
-                            target_width: int, target_height: int) -> np.ndarray:
+        Args:
+            cv2_image: OpenCV image (BGR)
+
+        Returns:
+            Dictionary with face bounds and estimated landmark positions, or None
+        """
+        if FACE_CASCADE is None:
+            logger.error("Face cascade not loaded")
+            return None
+
+        try:
+            gray = cv2.cvtColor(cv2_image, cv2.COLOR_BGR2GRAY)
+
+            # Try multiple detection parameters for robustness
+            faces = FACE_CASCADE.detectMultiScale(
+                gray,
+                scaleFactor=self.scale_factor,
+                minNeighbors=self.min_neighbors,
+                minSize=(60, 60),
+                flags=cv2.CASCADE_SCALE_IMAGE
+            )
+
+            # If no faces found, try with looser parameters
+            if len(faces) == 0:
+                faces = FACE_CASCADE.detectMultiScale(
+                    gray,
+                    scaleFactor=1.05,
+                    minNeighbors=3,
+                    minSize=(40, 40),
+                    flags=cv2.CASCADE_SCALE_IMAGE
+                )
+
+            if len(faces) == 0:
+                return None
+
+            # Take the largest face
+            face = max(faces, key=lambda f: f[2] * f[3])
+            x, y, w, h = face
+
+            landmarks = {
+                'face_bounds': (x, y, w, h),
+                'face_center': (x + w // 2, y + h // 2),
+                'face_width': w,
+                'face_height': h,
+                # Chin is at bottom of face box
+                'chin': (x + w // 2, y + h),
+                # Forehead is at top center
+                'forehead': (x + w // 2, y + int(h * 0.12)),
+                # Earlobes at sides, 50% down face
+                'left_earlobe': (x - int(w * 0.05), y + int(h * 0.50)),
+                'right_earlobe': (x + w + int(w * 0.05), y + int(h * 0.50)),
+                # Nose positions
+                'nose_tip': (x + w // 2, y + int(h * 0.60)),
+                'left_nostril': (x + w // 2 - int(w * 0.10), y + int(h * 0.65)),
+                'right_nostril': (x + w // 2 + int(w * 0.10), y + int(h * 0.65)),
+                'septum': (x + w // 2, y + int(h * 0.70)),
+                # Eye positions (for angle calculation)
+                'left_eye': (x + int(w * 0.30), y + int(h * 0.35)),
+                'right_eye': (x + int(w * 0.70), y + int(h * 0.35)),
+            }
+
+            # Calculate face angle from eye positions
+            delta_x = landmarks['right_eye'][0] - landmarks['left_eye'][0]
+            delta_y = landmarks['right_eye'][1] - landmarks['left_eye'][1]
+            landmarks['face_angle'] = math.degrees(math.atan2(delta_y, delta_x))
+
+            return landmarks
+
+        except Exception as e:
+            logger.error(f"Face detection error: {e}")
+            return None
+
+    def _resize_jewelry(self, jewelry: np.ndarray, target_width: int, target_height: int) -> np.ndarray:
         """Resize jewelry image maintaining aspect ratio."""
         h, w = jewelry.shape[:2]
+        if w == 0 or h == 0:
+            return jewelry
+
         aspect_ratio = w / h
 
-        if target_width / target_height > aspect_ratio:
+        if target_width / max(target_height, 1) > aspect_ratio:
             new_height = target_height
             new_width = int(new_height * aspect_ratio)
         else:
@@ -324,8 +197,11 @@ class JewelryEngine:
 
         return cv2.resize(jewelry, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
 
-    def _rotate_jewelry_cv2(self, jewelry: np.ndarray, angle: float) -> np.ndarray:
+    def _rotate_jewelry(self, jewelry: np.ndarray, angle: float) -> np.ndarray:
         """Rotate jewelry image around center."""
+        if abs(angle) < 1:  # Skip rotation for small angles
+            return jewelry
+
         h, w = jewelry.shape[:2]
         center = (w // 2, h // 2)
 
@@ -350,7 +226,7 @@ class JewelryEngine:
         Overlay PNG with alpha blending.
 
         Args:
-            background: Background image (BGR or BGRA)
+            background: Background image (BGR)
             overlay: Overlay image with alpha channel (BGRA)
             position: (x, y) center position for overlay
             opacity: Opacity multiplier (0.0 to 1.0)
@@ -375,9 +251,11 @@ class JewelryEngine:
         oh, ow = overlay.shape[:2]
         bh, bw = background.shape[:2]
 
+        # Calculate top-left corner from center position
         x = position[0] - ow // 2
         y = position[1] - oh // 2
 
+        # Calculate overlap region
         x1, y1 = max(0, x), max(0, y)
         x2, y2 = min(bw, x + ow), min(bh, y + oh)
 
@@ -387,9 +265,11 @@ class JewelryEngine:
         if x2 <= x1 or y2 <= y1:
             return background
 
+        # Extract regions
         roi = background[y1:y2, x1:x2].copy()
         overlay_roi = overlay[oy1:oy2, ox1:ox2]
 
+        # Alpha blending
         alpha = overlay_roi[:, :, 3:4].astype(np.float32) / 255.0
         overlay_rgb = overlay_roi[:, :, :3].astype(np.float32)
         roi_float = roi.astype(np.float32)
@@ -401,91 +281,13 @@ class JewelryEngine:
 
         return result
 
-    def _cvzone_overlay_png(self, background: np.ndarray, overlay: np.ndarray,
-                            position: Tuple[int, int], opacity: float = 1.0) -> np.ndarray:
-        """Use cvzone.overlayPNG or fallback to custom implementation."""
-        try:
-            if CVZONE_AVAILABLE and hasattr(cvzone, 'overlayPNG'):
-                if overlay.shape[2] == 3:
-                    overlay = cv2.cvtColor(overlay, cv2.COLOR_BGR2BGRA)
-
-                if opacity < 1.0:
-                    overlay = overlay.copy()
-                    overlay[:, :, 3] = (overlay[:, :, 3] * opacity).astype(np.uint8)
-
-                oh, ow = overlay.shape[:2]
-                x = position[0] - ow // 2
-                y = position[1] - oh // 2
-
-                result = cvzone.overlayPNG(background, overlay, [x, y])
-                return result
-        except Exception as e:
-            logger.warning(f"cvzone.overlayPNG failed, using fallback: {e}")
-
-        return self._overlay_png(background, overlay, position, opacity)
-
-    def detect_pose_landmarks(self, cv2_image: np.ndarray) -> Optional[dict]:
-        """
-        Detect pose landmarks using cvzone PoseDetector.
-
-        Args:
-            cv2_image: OpenCV image (BGR)
-
-        Returns:
-            Dictionary with landmark positions or None if detection failed
-        """
-        try:
-            img, lmList = self.pose_detector.findPose(cv2_image.copy(), draw=False)
-
-            if not lmList or len(lmList) < 13:
-                return None
-
-            lm_dict = {lm[0]: (lm[1], lm[2]) for lm in lmList if len(lm) >= 3}
-
-            landmarks = {}
-
-            if self.POSE_LEFT_SHOULDER in lm_dict and self.POSE_RIGHT_SHOULDER in lm_dict:
-                landmarks['left_shoulder'] = lm_dict[self.POSE_LEFT_SHOULDER]
-                landmarks['right_shoulder'] = lm_dict[self.POSE_RIGHT_SHOULDER]
-            else:
-                return None
-
-            if self.POSE_LEFT_MOUTH in lm_dict:
-                landmarks['left_mouth'] = lm_dict[self.POSE_LEFT_MOUTH]
-            if self.POSE_RIGHT_MOUTH in lm_dict:
-                landmarks['right_mouth'] = lm_dict[self.POSE_RIGHT_MOUTH]
-            if self.POSE_NOSE in lm_dict:
-                landmarks['nose'] = lm_dict[self.POSE_NOSE]
-            if self.POSE_LEFT_EAR in lm_dict:
-                landmarks['left_ear'] = lm_dict[self.POSE_LEFT_EAR]
-            if self.POSE_RIGHT_EAR in lm_dict:
-                landmarks['right_ear'] = lm_dict[self.POSE_RIGHT_EAR]
-
-            return landmarks
-
-        except Exception as e:
-            logger.error(f"Pose detection error: {e}")
-            return None
-
-    def detect_face_landmarks(self, cv2_image: np.ndarray) -> Optional[dict]:
-        """
-        Detect face landmarks using OpenCV Haar Cascades.
-
-        Args:
-            cv2_image: OpenCV image (BGR)
-
-        Returns:
-            Dictionary with facial landmark estimates or None
-        """
-        return self._face_detector.detect_face(cv2_image)
-
     def apply_necklace(self, person_image: Image.Image,
                        necklace_image: Image.Image,
                        opacity: float = 1.0) -> Tuple[Image.Image, str]:
         """
-        Apply necklace to person image using pose landmarks 11, 12.
+        Apply necklace using SIMPLE face-based positioning.
 
-        Uses cvzone PoseDetector for accurate shoulder positioning.
+        Places necklace 20% below chin center - NO POSE DETECTION NEEDED.
 
         Args:
             person_image: PIL Image of the person
@@ -501,52 +303,55 @@ class JewelryEngine:
 
             h, w = cv2_person.shape[:2]
 
-            pose_landmarks = self.detect_pose_landmarks(cv2_person)
+            # Try to detect face for positioning
+            face = self.detect_face(cv2_person)
 
-            if pose_landmarks is None:
-                return person_image, "Error: Could not detect body pose. Please use a clear front-facing photo with visible shoulders."
+            if face is not None:
+                # Face detected - use chin position
+                chin_x, chin_y = face['chin']
+                face_width = face['face_width']
+                face_angle = face.get('face_angle', 0)
 
-            left_shoulder = pose_landmarks['left_shoulder']
-            right_shoulder = pose_landmarks['right_shoulder']
+                # Position necklace 20% of face height below chin
+                necklace_y = chin_y + int(face['face_height'] * 0.20)
+                necklace_x = chin_x
 
-            shoulder_width = abs(right_shoulder[0] - left_shoulder[0])
+                # Necklace width = 2x face width (to cover shoulders)
+                necklace_width = int(face_width * 2.0)
+                necklace_height = int(necklace_width * 0.6)
 
-            if shoulder_width < 50:
-                return person_image, "Error: Shoulders not clearly visible. Please use a photo with visible shoulders."
-
-            center_x = (left_shoulder[0] + right_shoulder[0]) // 2
-            center_y = (left_shoulder[1] + right_shoulder[1]) // 2
-
-            if 'left_mouth' in pose_landmarks and 'right_mouth' in pose_landmarks:
-                mouth_center_y = (pose_landmarks['left_mouth'][1] + pose_landmarks['right_mouth'][1]) // 2
-                neck_y = mouth_center_y + int((center_y - mouth_center_y) * 0.4)
-                center_y = neck_y
+                logger.info(f"Face detected. Placing necklace at ({necklace_x}, {necklace_y})")
             else:
-                center_y -= int(shoulder_width * 0.05)
+                # NO FACE DETECTED - Use fallback center positioning
+                # Still place the necklace, don't give up!
+                logger.warning("No face detected - using center fallback positioning")
 
-            angle = self._calculate_shoulder_angle(left_shoulder, right_shoulder)
+                necklace_x = w // 2
+                necklace_y = int(h * 0.45)  # 45% down the image (roughly neck area)
+                necklace_width = int(w * 0.5)  # 50% of image width
+                necklace_height = int(necklace_width * 0.6)
+                face_angle = 0
 
-            necklace_width = int(shoulder_width * 1.2)
-            necklace_height = int(necklace_width * 0.7)
+            # Resize necklace
+            resized = self._resize_jewelry(cv2_necklace, necklace_width, necklace_height)
 
-            resized_necklace = self._resize_jewelry_cv2(cv2_necklace, necklace_width, necklace_height)
+            # Rotate if face is tilted
+            rotated = self._rotate_jewelry(resized, face_angle)
 
-            if abs(angle) > 2:
-                rotated_necklace = self._rotate_jewelry_cv2(resized_necklace, angle)
-            else:
-                rotated_necklace = resized_necklace
-
-            final_y = center_y + int(shoulder_width * 0.15)
-
-            result = self._cvzone_overlay_png(cv2_person, rotated_necklace,
-                                               (center_x, final_y), opacity)
+            # Overlay necklace on person
+            result = self._overlay_png(cv2_person, rotated, (necklace_x, necklace_y), opacity)
 
             result_pil = self._cv2_to_pil(result)
 
-            return result_pil, "Success: Necklace applied successfully!"
+            if face is not None:
+                return result_pil, "Success: Necklace applied using face detection!"
+            else:
+                return result_pil, "Success: Necklace applied with fallback positioning (face not detected)"
 
         except Exception as e:
             logger.error(f"Necklace application error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return person_image, f"Error: {str(e)}"
 
     def apply_earrings(self, person_image: Image.Image,
@@ -554,8 +359,6 @@ class JewelryEngine:
                        opacity: float = 1.0) -> Tuple[Image.Image, str]:
         """
         Apply earrings using OpenCV face detection.
-
-        Single earring image is mirrored for left/right ears.
 
         Args:
             person_image: PIL Image of the person
@@ -571,41 +374,41 @@ class JewelryEngine:
 
             h, w = cv2_person.shape[:2]
 
-            face_landmarks = self.detect_face_landmarks(cv2_person)
+            face = self.detect_face(cv2_person)
 
-            if face_landmarks is None:
-                return person_image, "Error: Could not detect face. Please use a clear front-facing photo."
+            if face is None:
+                # Fallback positioning for earrings
+                logger.warning("No face detected - using fallback earring positioning")
+                left_pos = (int(w * 0.25), int(h * 0.35))
+                right_pos = (int(w * 0.75), int(h * 0.35))
+                earring_size = int(w * 0.08)
+                face_angle = 0
+            else:
+                face_width = face['face_width']
+                face_angle = face.get('face_angle', 0)
+                left_pos = face['left_earlobe']
+                right_pos = face['right_earlobe']
+                earring_size = int(face_width * 0.22)
 
-            face_width = face_landmarks['face_width']
-            face_angle = face_landmarks.get('face_angle', 0)
-
-            left_ear_pos = face_landmarks['left_earlobe']
-            right_ear_pos = face_landmarks['right_earlobe']
-
-            # Scale earrings relative to face size (20% of face width)
-            earring_size = int(face_width * 0.22)
             earring_size = max(earring_size, 20)
 
-            resized_earring = self._resize_jewelry_cv2(cv2_earring, earring_size, earring_size)
-
-            rotated_left = self._rotate_jewelry_cv2(resized_earring, face_angle)
+            resized_earring = self._resize_jewelry(cv2_earring, earring_size, earring_size)
+            rotated_left = self._rotate_jewelry(resized_earring, face_angle)
 
             # Mirror for right ear
             flipped_earring = cv2.flip(resized_earring, 1)
-            rotated_right = self._rotate_jewelry_cv2(flipped_earring, face_angle)
+            rotated_right = self._rotate_jewelry(flipped_earring, face_angle)
 
-            # Adjust positions slightly
-            left_pos = (left_ear_pos[0] - int(face_width * 0.02),
-                       left_ear_pos[1] + int(face_width * 0.05))
-            right_pos = (right_ear_pos[0] + int(face_width * 0.02),
-                        right_ear_pos[1] + int(face_width * 0.05))
-
-            result = self._cvzone_overlay_png(cv2_person, rotated_left, left_pos, opacity)
-            result = self._cvzone_overlay_png(result, rotated_right, right_pos, opacity)
+            # Apply earrings
+            result = self._overlay_png(cv2_person, rotated_left, left_pos, opacity)
+            result = self._overlay_png(result, rotated_right, right_pos, opacity)
 
             result_pil = self._cv2_to_pil(result)
 
-            return result_pil, "Success: Earrings applied successfully!"
+            if face is not None:
+                return result_pil, "Success: Earrings applied successfully!"
+            else:
+                return result_pil, "Success: Earrings applied with fallback positioning"
 
         except Exception as e:
             logger.error(f"Earring application error: {str(e)}")
@@ -631,30 +434,36 @@ class JewelryEngine:
 
             h, w = cv2_person.shape[:2]
 
-            face_landmarks = self.detect_face_landmarks(cv2_person)
+            face = self.detect_face(cv2_person)
 
-            if face_landmarks is None:
-                return person_image, "Error: Could not detect face. Please use a clear front-facing photo."
+            if face is None:
+                # Fallback positioning
+                logger.warning("No face detected - using fallback tikka positioning")
+                forehead_pos = (w // 2, int(h * 0.20))
+                tikka_width = int(w * 0.08)
+                tikka_height = int(tikka_width * 2)
+                face_angle = 0
+            else:
+                face_width = face['face_width']
+                face_angle = face.get('face_angle', 0)
+                forehead_pos = face['forehead']
+                tikka_width = int(face_width * 0.14)
+                tikka_height = int(face_width * 0.28)
 
-            face_width = face_landmarks['face_width']
-            face_angle = face_landmarks.get('face_angle', 0)
-
-            forehead_pos = face_landmarks['forehead']
-
-            # Scale tikka relative to face size
-            tikka_width = int(face_width * 0.14)
-            tikka_height = int(face_width * 0.28)
             tikka_width = max(tikka_width, 15)
             tikka_height = max(tikka_height, 30)
 
-            resized_tikka = self._resize_jewelry_cv2(cv2_tikka, tikka_width, tikka_height)
-            rotated_tikka = self._rotate_jewelry_cv2(resized_tikka, face_angle)
+            resized_tikka = self._resize_jewelry(cv2_tikka, tikka_width, tikka_height)
+            rotated_tikka = self._rotate_jewelry(resized_tikka, face_angle)
 
-            result = self._cvzone_overlay_png(cv2_person, rotated_tikka, forehead_pos, opacity)
+            result = self._overlay_png(cv2_person, rotated_tikka, forehead_pos, opacity)
 
             result_pil = self._cv2_to_pil(result)
 
-            return result_pil, "Success: Maang Tikka applied successfully!"
+            if face is not None:
+                return result_pil, "Success: Maang Tikka applied successfully!"
+            else:
+                return result_pil, "Success: Maang Tikka applied with fallback positioning"
 
         except Exception as e:
             logger.error(f"Maang Tikka application error: {str(e)}")
@@ -684,43 +493,58 @@ class JewelryEngine:
 
             h, w = cv2_person.shape[:2]
 
-            face_landmarks = self.detect_face_landmarks(cv2_person)
-
-            if face_landmarks is None:
-                return person_image, "Error: Could not detect face. Please use a clear front-facing photo."
-
-            face_width = face_landmarks['face_width']
-            face_angle = face_landmarks.get('face_angle', 0)
+            face = self.detect_face(cv2_person)
 
             side_lower = side.lower()
-            if side_lower == "septum":
-                nose_pos = face_landmarks['septum']
-            elif side_lower == "right":
-                nose_pos = face_landmarks['right_nostril']
-            else:
-                nose_pos = face_landmarks['left_nostril']
 
-            # Determine ring size based on style
-            if ring_style.lower() == "nath":
-                ring_size = int(face_width * 0.18)
-            elif ring_style.lower() == "hoop":
-                ring_size = int(face_width * 0.12)
+            if face is None:
+                # Fallback positioning
+                logger.warning("No face detected - using fallback nose ring positioning")
+                center_x = w // 2
+                center_y = int(h * 0.40)
+                if side_lower == "left":
+                    nose_pos = (center_x - int(w * 0.03), center_y)
+                elif side_lower == "right":
+                    nose_pos = (center_x + int(w * 0.03), center_y)
+                else:
+                    nose_pos = (center_x, center_y)
+                ring_size = int(w * 0.05)
+                face_angle = 0
             else:
-                ring_size = int(face_width * 0.08)
+                face_width = face['face_width']
+                face_angle = face.get('face_angle', 0)
+
+                if side_lower == "septum":
+                    nose_pos = face['septum']
+                elif side_lower == "right":
+                    nose_pos = face['right_nostril']
+                else:
+                    nose_pos = face['left_nostril']
+
+                # Determine ring size based on style
+                if ring_style.lower() == "nath":
+                    ring_size = int(face_width * 0.18)
+                elif ring_style.lower() == "hoop":
+                    ring_size = int(face_width * 0.12)
+                else:
+                    ring_size = int(face_width * 0.08)
 
             ring_size = max(ring_size, 10)
 
-            resized_ring = self._resize_jewelry_cv2(cv2_ring, ring_size, ring_size)
-            rotated_ring = self._rotate_jewelry_cv2(resized_ring, face_angle)
+            resized_ring = self._resize_jewelry(cv2_ring, ring_size, ring_size)
+            rotated_ring = self._rotate_jewelry(resized_ring, face_angle)
 
             if side_lower == "right":
                 rotated_ring = cv2.flip(rotated_ring, 1)
 
-            result = self._cvzone_overlay_png(cv2_person, rotated_ring, nose_pos, opacity)
+            result = self._overlay_png(cv2_person, rotated_ring, nose_pos, opacity)
 
             result_pil = self._cv2_to_pil(result)
 
-            return result_pil, f"Success: Nose ring applied on {side} side!"
+            if face is not None:
+                return result_pil, f"Success: Nose ring applied on {side} side!"
+            else:
+                return result_pil, f"Success: Nose ring applied with fallback positioning"
 
         except Exception as e:
             logger.error(f"Nose ring application error: {str(e)}")
@@ -728,8 +552,7 @@ class JewelryEngine:
 
     def close(self):
         """Release resources."""
-        if self._pose_detector is not None:
-            self._pose_detector = None
+        pass
 
 
 # Global engine instance
@@ -746,32 +569,22 @@ def get_engine() -> JewelryEngine:
 
 def remove_jewelry_background(jewelry_image: Union[Image.Image, np.ndarray]) -> Image.Image:
     """
-    Remove background from jewelry image using rembg.
+    Remove background from jewelry image.
+
+    NOTE: rembg is disabled for CPU performance. Returns RGBA without removal.
 
     Args:
         jewelry_image: PIL Image or numpy array of the jewelry
 
     Returns:
-        PIL Image with transparent background (RGBA)
+        PIL Image with RGBA mode
     """
     try:
-        # DISABLED: rembg takes too long on CPU (16+ minutes)
-        # Skip background removal for better performance
-        # from rembg import remove
-        
-        if isinstance(jewelry_image, np.ndarray):
-            jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
-        
-        # Return image as RGBA without background removal
-        return jewelry_image.convert('RGBA')
-    except ImportError:
-        logger.warning("rembg not installed. Install with: pip install rembg")
         if isinstance(jewelry_image, np.ndarray):
             jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
         return jewelry_image.convert('RGBA')
-
     except Exception as e:
-        logger.error(f"Background removal error: {str(e)}")
+        logger.error(f"Background conversion error: {str(e)}")
         if isinstance(jewelry_image, np.ndarray):
             jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
         return jewelry_image.convert('RGBA')
@@ -802,19 +615,13 @@ def apply_jewelry(person_image: Union[Image.Image, np.ndarray, str],
         if isinstance(person_image, str):
             person_image = Image.open(person_image)
         elif isinstance(person_image, np.ndarray):
-            if len(person_image.shape) == 3 and person_image.shape[2] in [3, 4]:
-                person_image = Image.fromarray(person_image)
-            else:
-                person_image = Image.fromarray(person_image)
+            person_image = Image.fromarray(person_image)
 
         # Convert jewelry image to PIL
         if isinstance(jewelry_image, str):
             jewelry_image = Image.open(jewelry_image)
         elif isinstance(jewelry_image, np.ndarray):
-            if len(jewelry_image.shape) == 3 and jewelry_image.shape[2] in [3, 4]:
-                jewelry_image = Image.fromarray(jewelry_image)
-            else:
-                jewelry_image = Image.fromarray(jewelry_image)
+            jewelry_image = Image.fromarray(jewelry_image)
 
         if person_image is None:
             return None, "Error: Please upload a person photo."
@@ -851,23 +658,63 @@ def apply_jewelry(person_image: Union[Image.Image, np.ndarray, str],
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("Naari Studio - Jewelry Virtual Try-On Engine")
-    print("ZeroGPU Compatible (NO MEDIAPIPE)")
+    print("Naari Studio - Jewelry Virtual Try-On Engine (SIMPLIFIED)")
+    print("100% ZeroGPU Compatible - OpenCV Only")
     print("=" * 60)
-    print(f"\ncvzone available: {CVZONE_AVAILABLE}")
-    print(f"OpenCV face cascade loaded: {FACE_CASCADE is not None}")
+    print(f"\nOpenCV face cascade loaded: {FACE_CASCADE is not None}")
     print(f"OpenCV eye cascade loaded: {EYE_CASCADE is not None}")
-    print("\nPose Detection (cvzone PoseDetector):")
-    print("  - 11: left_shoulder")
-    print("  - 12: right_shoulder")
-    print("  - Used for necklace positioning")
-    print("\nFace Detection (OpenCV Haar Cascades):")
-    print("  - Face bounding box detection")
-    print("  - Geometric landmark estimation")
-    print("  - Used for earrings, tikka, nose ring")
+    print("\nDetection Method: OpenCV Haar Cascades ONLY")
+    print("  - NO MediaPipe dependency")
+    print("  - NO cvzone pose detection")
+    print("  - Works on CPU, GPU, ZeroGPU")
+    print("\nNecklace Positioning:")
+    print("  - Uses face detection to find chin")
+    print("  - Places necklace 20% below chin center")
+    print("  - Fallback to center if no face detected")
     print("\nSupported jewelry types:")
-    print("  - necklace: Uses pose landmarks")
-    print("  - earrings: Uses face detection")
-    print("  - maang_tikka: Uses face detection")
-    print("  - nose_ring: Uses face detection")
+    print("  - necklace: Face-based positioning")
+    print("  - earrings: Face detection")
+    print("  - maang_tikka: Face detection")
+    print("  - nose_ring: Face detection")
     print("=" * 60)
+
+    # Quick self-test
+    print("\nRunning self-test...")
+    try:
+        engine = JewelryEngine()
+
+        # Create a test image (white background with a simple "face" circle)
+        test_img = np.ones((400, 300, 3), dtype=np.uint8) * 255
+        # Draw a circle as a fake face
+        cv2.circle(test_img, (150, 150), 80, (200, 180, 160), -1)  # Face
+        cv2.circle(test_img, (130, 130), 10, (50, 50, 50), -1)  # Left eye
+        cv2.circle(test_img, (170, 130), 10, (50, 50, 50), -1)  # Right eye
+
+        # Create a simple red jewelry overlay
+        jewelry_img = np.zeros((50, 100, 4), dtype=np.uint8)
+        jewelry_img[:, :, 2] = 255  # Red
+        jewelry_img[:, :, 3] = 200  # Semi-transparent
+
+        # Convert to PIL
+        person_pil = Image.fromarray(cv2.cvtColor(test_img, cv2.COLOR_BGR2RGB))
+        jewelry_pil = Image.fromarray(jewelry_img)
+
+        # Test necklace application
+        result, msg = engine.apply_necklace(person_pil, jewelry_pil)
+
+        # Verify result is different from input
+        result_arr = np.array(result)
+        person_arr = np.array(person_pil)
+
+        if np.array_equal(result_arr, person_arr):
+            print("WARNING: Result is same as input - overlay may not be working!")
+        else:
+            print("SUCCESS: Overlay is working - result differs from input")
+
+        print(f"Test result: {msg}")
+        print("Self-test complete!")
+
+    except Exception as e:
+        print(f"Self-test failed: {e}")
+        import traceback
+        traceback.print_exc()
