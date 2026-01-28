@@ -1,4 +1,5 @@
 name: Jewelry VTON Training Pipeline
+
 on:
   workflow_dispatch:
     inputs:
@@ -10,35 +11,121 @@ on:
         options:
           - scrape
           - train
-          - test
+          - full_pipeline
+      dataset_url:
+        description: 'Dataset URL for training (required for train action)'
+        required: false
+        type: string
+      max_train_steps:
+        description: 'Number of training steps'
+        required: false
+        default: '1000'
+        type: string
 
 jobs:
-  jewelry-vton:
+  scrape:
+    if: github.event.inputs.action == 'scrape' || github.event.inputs.action == 'full_pipeline'
     runs-on: ubuntu-latest
+    outputs:
+      dataset_url: ${{ steps.upload_release.outputs.asset_url }}
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-      
+
       - name: Install dependencies
-        run: pip install requests replicate pillow
-      
+        run: pip install requests pillow
+
       - name: Run Scraper
-        if: github.event.inputs.action == 'scrape'
         run: python scripts/scraper.py
-        
-      - name: Upload Dataset
-        if: github.event.inputs.action == 'scrape'
+
+      - name: Create dataset zip
+        run: |
+          cd dataset
+          zip -r ../jewelry-dataset.zip jewelry_images/
+          cd ..
+          echo "Dataset zip created:"
+          ls -la jewelry-dataset.zip
+
+      - name: Upload Dataset Artifact
         uses: actions/upload-artifact@v4
         with:
           name: jewelry-dataset
-          path: dataset/
-          
+          path: jewelry-dataset.zip
+          retention-days: 30
+
+      - name: Create Release with Dataset
+        id: upload_release
+        if: github.event.inputs.action == 'full_pipeline'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create a unique tag for this training run
+          TAG_NAME="dataset-$(date +%Y%m%d-%H%M%S)"
+
+          # Create the release
+          gh release create "$TAG_NAME" \
+            --title "Training Dataset $TAG_NAME" \
+            --notes "Auto-generated dataset for jewelry VTON training" \
+            jewelry-dataset.zip
+
+          # Get the asset download URL
+          ASSET_URL=$(gh release view "$TAG_NAME" --json assets --jq '.assets[0].url')
+          echo "asset_url=$ASSET_URL" >> $GITHUB_OUTPUT
+          echo "Dataset uploaded to: $ASSET_URL"
+
+  train:
+    needs: [scrape]
+    # Run if: standalone train action OR full_pipeline with successful scrape
+    if: always() && (github.event.inputs.action == 'train' || (github.event.inputs.action == 'full_pipeline' && needs.scrape.result == 'success'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install replicate
+
+      - name: Validate Configuration
+        run: |
+          if [ -z "${{ secrets.REPLICATE_API_TOKEN }}" ]; then
+            echo "ERROR: REPLICATE_API_TOKEN secret is not configured"
+            echo "Please add your Replicate API token to repository secrets"
+            echo "Go to: Settings > Secrets and variables > Actions > New repository secret"
+            exit 1
+          fi
+
+          # Determine dataset URL
+          if [ "${{ github.event.inputs.action }}" == "full_pipeline" ]; then
+            DATASET_URL="${{ needs.scrape.outputs.dataset_url }}"
+          else
+            DATASET_URL="${{ github.event.inputs.dataset_url }}"
+          fi
+
+          if [ -z "$DATASET_URL" ]; then
+            echo "ERROR: Dataset URL is required"
+            echo "For 'train' action: provide dataset_url input"
+            echo "For 'full_pipeline': scrape job should have created a release"
+            exit 1
+          fi
+
+          echo "Configuration validated successfully"
+          echo "Dataset URL: $DATASET_URL"
+
       - name: Run Training
-        if: github.event.inputs.action == 'train'
         env:
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
-        run: python scripts/train_replicate.py
+          DATASET_URL: ${{ github.event.inputs.action == 'full_pipeline' && needs.scrape.outputs.dataset_url || github.event.inputs.dataset_url }}
+          MAX_TRAIN_STEPS: ${{ github.event.inputs.max_train_steps }}
+          MODEL_DESTINATION: ganeshgowri/naari-jewelry-vton
+        run: |
+          echo "Starting Replicate training..."
+          python scripts/train_replicate.py
+          echo "Training job submitted successfully"
