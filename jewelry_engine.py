@@ -569,22 +569,83 @@ def get_engine() -> JewelryEngine:
 
 def remove_jewelry_background(jewelry_image: Union[Image.Image, np.ndarray]) -> Image.Image:
     """
-    Remove background from jewelry image.
+    Remove white/near-white background from jewelry image using color thresholding.
 
-    NOTE: rembg is disabled for CPU performance. Returns RGBA without removal.
+    Uses a two-tier approach:
+    - Pure white pixels (R,G,B > 250): Fully transparent
+    - Near-white pixels (brightness > 230): Semi-transparent (faded edges)
+    - All other pixels: Preserved with full opacity
 
     Args:
         jewelry_image: PIL Image or numpy array of the jewelry
 
     Returns:
-        PIL Image with RGBA mode
+        PIL Image with RGBA mode and transparent background
     """
     try:
+        # Convert to PIL Image if numpy array
         if isinstance(jewelry_image, np.ndarray):
-            jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
-        return jewelry_image.convert('RGBA')
+            if len(jewelry_image.shape) == 3 and jewelry_image.shape[2] == 4:
+                # BGRA format from OpenCV
+                jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGRA2RGBA))
+            elif len(jewelry_image.shape) == 3 and jewelry_image.shape[2] == 3:
+                # BGR format from OpenCV
+                jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
+            else:
+                jewelry_image = Image.fromarray(jewelry_image)
+
+        # Convert to RGBA for alpha channel manipulation
+        rgba_image = jewelry_image.convert('RGBA')
+
+        # Get pixel data as numpy array for fast processing
+        pixels = np.array(rgba_image, dtype=np.float32)
+
+        # Extract RGB channels
+        r = pixels[:, :, 0]
+        g = pixels[:, :, 1]
+        b = pixels[:, :, 2]
+
+        # Calculate brightness (average of RGB)
+        brightness = (r + g + b) / 3.0
+
+        # Create alpha channel based on background detection
+        # Start with full opacity
+        alpha = np.ones(brightness.shape, dtype=np.float32) * 255.0
+
+        # Tier 1: Pure white pixels (R,G,B all > 250) - fully transparent
+        pure_white_mask = (r > 250) & (g > 250) & (b > 250)
+        alpha[pure_white_mask] = 0
+
+        # Tier 2: Near-white pixels (brightness > 230 but not pure white) - semi-transparent
+        # This creates a smooth edge transition
+        near_white_mask = (brightness > 230) & ~pure_white_mask
+        # Scale transparency based on how close to white (230-250 range -> 128-0 alpha)
+        alpha[near_white_mask] = ((250 - brightness[near_white_mask]) / 20.0) * 128.0
+
+        # Also check for very light pixels with low color saturation (likely background)
+        max_rgb = np.maximum(np.maximum(r, g), b)
+        min_rgb = np.minimum(np.minimum(r, g), b)
+        saturation = (max_rgb - min_rgb) / (max_rgb + 1e-6)  # Avoid division by zero
+
+        # Low saturation + high brightness = likely white/gray background
+        low_sat_bright_mask = (saturation < 0.1) & (brightness > 240) & ~pure_white_mask
+        alpha[low_sat_bright_mask] = np.minimum(alpha[low_sat_bright_mask], 64)
+
+        # Clamp alpha values
+        alpha = np.clip(alpha, 0, 255)
+
+        # Update alpha channel in pixels array
+        pixels[:, :, 3] = alpha
+
+        # Convert back to PIL Image
+        result = Image.fromarray(pixels.astype(np.uint8), mode='RGBA')
+
+        logger.info("Background removal completed using color thresholding")
+        return result
+
     except Exception as e:
-        logger.error(f"Background conversion error: {str(e)}")
+        logger.error(f"Background removal error: {str(e)}")
+        # Fallback: just return RGBA conversion
         if isinstance(jewelry_image, np.ndarray):
             jewelry_image = Image.fromarray(cv2.cvtColor(jewelry_image, cv2.COLOR_BGR2RGB))
         return jewelry_image.convert('RGBA')
@@ -629,7 +690,8 @@ def apply_jewelry(person_image: Union[Image.Image, np.ndarray, str],
             return None, "Error: Please upload a jewelry image."
 
         person_image = person_image.convert('RGB')
-        jewelry_image = jewelry_image.convert('RGBA')
+        # Apply background removal to jewelry image
+        jewelry_image = remove_jewelry_background(jewelry_image)
 
     except Exception as e:
         return None, f"Error: Could not load images - {str(e)}"
