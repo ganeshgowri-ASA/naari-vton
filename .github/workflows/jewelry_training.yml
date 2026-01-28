@@ -29,13 +29,26 @@ jobs:
       - name: Run Scraper
         if: github.event.inputs.action == 'scrape'
         run: python scripts/scraper.py
-        
+
+      - name: Verify Dataset Files
+        if: github.event.inputs.action == 'scrape'
+        run: |
+          echo "Checking dataset directory..."
+          if [ -d "dataset/jewelry_images" ]; then
+            echo "✓ Dataset directory exists"
+            find dataset/jewelry_images -type f -name "*.jpg" | wc -l | xargs -I {} echo "✓ Found {} image files"
+            ls -la dataset/jewelry_images/
+          else
+            echo "✗ ERROR: dataset/jewelry_images directory not found!"
+            exit 1
+          fi
+
       - name: Upload Dataset
         if: github.event.inputs.action == 'scrape'
         uses: actions/upload-artifact@v4
         with:
           name: jewelry-dataset
-          path: dataset/
+          path: dataset/jewelry_images/
           
       - name: Run Training
         if: github.event.inputs.action == 'train'
