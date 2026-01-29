@@ -70,8 +70,7 @@ def create_training_job():
                 "caption_prefix": DEFAULT_CAPTION_PREFIX,
                 "max_train_steps": max_steps,
             },
-            #             destination=destination
-            
+            destination=destination,
         )
 
         print(f"Training job created successfully!")
