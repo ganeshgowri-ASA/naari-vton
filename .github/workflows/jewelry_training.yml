@@ -128,7 +128,6 @@ jobs:
           DATASET_URL: ${{ github.event.inputs.action == 'full_pipeline' && needs.scrape.outputs.dataset_url || github.event.inputs.dataset_url }}
           MAX_TRAIN_STEPS: ${{ github.event.inputs.max_train_steps }}
             MODEL_DESTINATION: ganeshgowri-asa/naari-jewelry-vton        run: |
-                  run: |
-          echo "Starting Replicate training..."
+    run: |
           python scripts/train_replicate.py
           echo "Training job submitted successfully"
