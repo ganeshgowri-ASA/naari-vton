@@ -70,7 +70,8 @@ def create_training_job():
                 "caption_prefix": DEFAULT_CAPTION_PREFIX,
                 "max_train_steps": max_steps,
             },
-            destination=destination
+            #             destination=destination
+                        # TEMPORARY FIX: Destination commented out to avoid 404 error. Model needs to be created first on Replicate.
         )
 
         print(f"Training job created successfully!")
