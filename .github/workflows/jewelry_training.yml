@@ -45,7 +45,7 @@ jobs:
       - name: Create dataset zip
         run: |
           cd dataset
-          zip -r ../jewelry-dataset.zip jewelry_images/
+          zip -r ../jewelry-dataset.zip jewelery_images/
           cd ..
           echo "Dataset zip created:"
           ls -la jewelry-dataset.zip
