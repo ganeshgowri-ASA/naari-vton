@@ -127,7 +127,7 @@ jobs:
           REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
           DATASET_URL: ${{ github.event.inputs.action == 'full_pipeline' && needs.scrape.outputs.dataset_url || github.event.inputs.dataset_url }}
           MAX_TRAIN_STEPS: ${{ github.event.inputs.max_train_steps }}
-            MODEL_DESTINATION: ganeshgowri-asa/naari-jewelry-vton
+          MODEL_DESTINATION: ganeshgowri-asa/naari-jewelry-vton
         run: |
           python scripts/train_replicate.py
           echo "Training job submitted successfully"
