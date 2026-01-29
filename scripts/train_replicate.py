@@ -6,7 +6,7 @@ This script initiates a fine-tuning job on Replicate for jewelry virtual try-on.
 Environment Variables:
     REPLICATE_API_TOKEN: Required. Your Replicate API token.
     DATASET_URL: Required. URL to the training dataset (zip file with images).
-    MODEL_DESTINATION: Optional. Replicate model destination (default: ganeshgowri/naari-jewelry-vton).
+    MODEL_DESTINATION: Optional. Replicate model destination (default: ganeshgowri-asa/naari-jewelry-vton).
     MAX_TRAIN_STEPS: Optional. Number of training steps (default: 1000).
 """
 import replicate
@@ -16,7 +16,7 @@ import time
 
 
 # Training configuration
-DEFAULT_MODEL_DESTINATION = "ganeshgowri/naari-jewelry-vton"
+DEFAULT_MODEL_DESTINATION = "ganeshgowri-asa/naari-jewelry-vton"
 DEFAULT_MAX_TRAIN_STEPS = 1000
 DEFAULT_TOKEN_STRING = "JEWELRYVTON"
 DEFAULT_CAPTION_PREFIX = "a photo of JEWELRYVTON jewelry"
@@ -71,7 +71,7 @@ def create_training_job():
                 "max_train_steps": max_steps,
             },
             #             destination=destination
-                        # TEMPORARY FIX: Destination commented out to avoid 404 error. Model needs to be created first on Replicate.
+            
         )
 
         print(f"Training job created successfully!")
