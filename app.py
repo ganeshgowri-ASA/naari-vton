@@ -53,6 +53,14 @@ from jewelry_engine import (
     REPLICATE_AVAILABLE
 )
 
+# Import the new Jewelry VTON Model for realistic try-on
+from jewelry_vton_model import (
+    jewelry_vton,
+    check_vton_availability,
+    JewelryType,
+    JewelryVTONModel
+)
+
 
 # ============================================================================
 # IMAGE PROCESSING UTILITIES
@@ -329,6 +337,87 @@ def get_styles_for_jewelry_type(jewelry_type: str) -> list:
     return STYLE_OPTIONS.get(jewelry_type, ["default"])
 
 
+# ============================================================================
+# REALISTIC JEWELRY VTON (Person + Jewelry Image → Realistic Output)
+# ============================================================================
+
+@spaces.GPU(duration=120)
+def process_jewelry_vton(
+    person_image: Optional[np.ndarray],
+    jewelry_image: Optional[np.ndarray],
+    jewelry_type: str,
+    metal_type: str,
+    style: str,
+    custom_prompt: str,
+    strength: float
+) -> Tuple[Optional[np.ndarray], str]:
+    """
+    Process realistic jewelry virtual try-on using the trained Replicate model.
+
+    This takes a person image AND a jewelry reference image, then uses AI to
+    realistically composite the jewelry onto the person - similar to how
+    IDM-VTON works for garments.
+
+    Args:
+        person_image: Person photo as numpy array
+        jewelry_image: Reference jewelry image to apply
+        jewelry_type: Type of jewelry (necklace, earrings, etc.)
+        metal_type: Metal type (gold, silver, etc.)
+        style: Style description
+        custom_prompt: Additional prompt text
+        strength: Transformation strength (0.0-1.0)
+
+    Returns:
+        Tuple of (result image, status message)
+    """
+    if person_image is None:
+        return None, "Please upload a person photo."
+
+    if jewelry_image is None:
+        return None, "Please upload a jewelry reference image."
+
+    # Check VTON model availability
+    vton_status = check_vton_availability()
+    if not vton_status["available"]:
+        if not vton_status["replicate_installed"]:
+            return None, "Error: Replicate package not installed. Install with: pip install replicate"
+        if not vton_status["api_token_set"]:
+            return None, "Error: REPLICATE_API_TOKEN environment variable not set. Please configure your API token."
+        return None, "Error: VTON model not available."
+
+    # Resize images if needed
+    person_image = resize_image_if_needed(person_image)
+    jewelry_image = resize_image_if_needed(jewelry_image)
+
+    try:
+        # Convert to PIL for the VTON model
+        person_pil = Image.fromarray(person_image)
+        jewelry_pil = Image.fromarray(jewelry_image)
+
+        # Run the VTON model
+        result_pil, message = jewelry_vton(
+            person_image=person_pil,
+            jewelry_image=jewelry_pil,
+            jewelry_type=jewelry_type,
+            metal_type=metal_type,
+            style=style,
+            custom_prompt=custom_prompt,
+            strength=strength
+        )
+
+        if result_pil is not None:
+            result_array = np.array(result_pil.convert('RGB'))
+            return result_array, message
+        else:
+            return None, message
+
+    except Exception as e:
+        logger.error(f"Jewelry VTON error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, f"Error: {str(e)}"
+
+
 def update_style_dropdown(jewelry_type: str):
     """Update style dropdown choices based on jewelry type selection."""
     styles = get_styles_for_jewelry_type(jewelry_type)
@@ -532,6 +621,130 @@ def create_jewelry_tab(jewelry_type: str,
             inputs=[person_input, jewelry_input, opacity_slider],
             outputs=[output_image, status_text]
         )
+
+
+def create_ai_vton_tab():
+    """
+    Create the AI VTON tab - realistic jewelry try-on with person + jewelry image.
+
+    This is the recommended method: upload your photo AND a jewelry image,
+    and the trained model will realistically composite the jewelry onto you.
+    """
+    vton_status = check_vton_availability()
+
+    with gr.Row():
+        with gr.Column(scale=1):
+            gr.Markdown("""
+            ### AI Jewelry VTON (Recommended)
+
+            **Realistic jewelry try-on using your trained Replicate model!**
+
+            Upload your photo AND a jewelry reference image.
+            The AI will realistically composite the jewelry onto you.
+
+            This uses the model trained with 150 jewelry images for realistic results.
+
+            **Powered by:** Replicate trained model (ganeshgowri-asa/naari-jewelry-vton)
+            """)
+
+            person_input = gr.Image(
+                label="Your Photo",
+                type="numpy",
+                sources=["upload", "webcam"],
+                height=250
+            )
+
+            jewelry_input = gr.Image(
+                label="Jewelry Reference Image",
+                type="numpy",
+                sources=["upload"],
+                height=250
+            )
+
+            with gr.Row():
+                remove_bg_btn = gr.Button("Remove Jewelry Background", variant="secondary", size="sm")
+
+            # Jewelry type selection
+            jewelry_type_dropdown = gr.Dropdown(
+                choices=["necklace", "earrings", "maang_tikka", "nose_ring", "bangles", "rings"],
+                value="necklace",
+                label="Jewelry Type",
+                info="Select the type of jewelry being applied"
+            )
+
+            # Options in an accordion
+            with gr.Accordion("Customization Options", open=False):
+                with gr.Row():
+                    metal_type_dropdown = gr.Dropdown(
+                        choices=METAL_TYPES,
+                        value="gold",
+                        label="Metal Type"
+                    )
+                    style_dropdown = gr.Dropdown(
+                        choices=["elegant", "traditional", "modern", "bridal", "casual"],
+                        value="elegant",
+                        label="Style"
+                    )
+
+                custom_prompt = gr.Textbox(
+                    label="Additional Description (optional)",
+                    placeholder="e.g., 'intricate kundan work', 'minimalist design'",
+                    lines=2
+                )
+
+                strength_slider = gr.Slider(
+                    minimum=0.3,
+                    maximum=1.0,
+                    value=0.75,
+                    step=0.05,
+                    label="Transformation Strength",
+                    info="Higher = more change, Lower = closer to original"
+                )
+
+            # API status indicator
+            api_status_text = "Available" if vton_status["available"] else "Not configured (set REPLICATE_API_TOKEN)"
+            api_status = gr.Markdown(f"**Replicate API Status:** {api_status_text}")
+
+            tryon_btn = gr.Button(
+                "Try On Jewelry",
+                variant="primary",
+                size="lg"
+            )
+
+        with gr.Column(scale=1):
+            output_image = gr.Image(
+                label="Result",
+                type="numpy",
+                height=500,
+                elem_classes="result-image"
+            )
+            status_text = gr.Textbox(
+                label="Status",
+                interactive=False,
+                lines=3
+            )
+
+    # Connect remove background button
+    remove_bg_btn.click(
+        fn=remove_background,
+        inputs=[jewelry_input],
+        outputs=[jewelry_input]
+    )
+
+    # Connect the try-on button
+    tryon_btn.click(
+        fn=process_jewelry_vton,
+        inputs=[
+            person_input,
+            jewelry_input,
+            jewelry_type_dropdown,
+            metal_type_dropdown,
+            style_dropdown,
+            custom_prompt,
+            strength_slider
+        ],
+        outputs=[output_image, status_text]
+    )
 
 
 def create_ai_jewelry_tab():
@@ -757,13 +970,18 @@ def create_app():
                 ## Jewelry Virtual Try-On
 
                 Try on various types of jewelry using AI generation or image overlay.
+                - **AI VTON (Recommended)**: Upload person + jewelry image for realistic try-on using our trained model
                 - **AI Generate**: Create custom jewelry with text prompts
-                - **Upload & Overlay**: Use your own jewelry images
+                - **Upload & Overlay**: Simple image overlay for quick preview
                 """)
 
                 # Jewelry sub-tabs
                 with gr.Tabs():
-                    # AI Generation Tab (NEW)
+                    # AI VTON Tab - Realistic Try-On with Person + Jewelry Image
+                    with gr.Tab("AI VTON"):
+                        create_ai_vton_tab()
+
+                    # AI Generation Tab
                     with gr.Tab("AI Generate"):
                         create_ai_jewelry_tab()
 
