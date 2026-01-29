@@ -1001,11 +1001,16 @@ class JewelryEngine:
         overlay_roi = overlay[oy1:oy2, ox1:ox2]
 
         # Alpha blending
-        alpha = overlay_roi[:, :, 3:4].astype(np.float32) / 255.0
+        alpha = overlay_roi[:, :, 3].astype(np.float32) / 255.0
+        # Apply Gaussian blur to alpha for smoother edge blending
+        kernel_size = 5
+        alpha_blurred = cv2.GaussianBlur(alpha, (kernel_size, kernel_size), 0)
+        if len(alpha_blurred.shape) == 2:
+            alpha_blurred = alpha_blurred[:, :, np.newaxis]
         overlay_rgb = overlay_roi[:, :, :3].astype(np.float32)
         roi_float = roi.astype(np.float32)
 
-        blended = overlay_rgb * alpha + roi_float * (1 - alpha)
+        blended = overlay_rgb * alpha_blurred + roi_float * (1 - alpha_blurred)
 
         result = background.copy()
         result[y1:y2, x1:x2] = blended.astype(np.uint8)
