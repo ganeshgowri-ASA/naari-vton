@@ -38,6 +38,50 @@ except ImportError:
 from jewelry_engine import apply_jewelry, remove_jewelry_background
 
 
+# ============================================================================
+# IMAGE PROCESSING UTILITIES
+# ============================================================================
+
+MAX_IMAGE_DIMENSION = 4096
+
+
+def resize_image_if_needed(image: Optional[np.ndarray], max_dim: int = MAX_IMAGE_DIMENSION) -> Optional[np.ndarray]:
+    """
+    Resize image if any dimension exceeds max_dim, maintaining aspect ratio.
+
+    Args:
+        image: Input image as numpy array (RGB/RGBA)
+        max_dim: Maximum allowed dimension (default 4096)
+
+    Returns:
+        Resized image as numpy array, or original if no resize needed
+    """
+    if image is None:
+        return None
+
+    height, width = image.shape[:2]
+
+    # Check if resize is needed
+    if width <= max_dim and height <= max_dim:
+        return image
+
+    # Calculate new dimensions maintaining aspect ratio
+    if width > height:
+        new_width = max_dim
+        new_height = int(height * (max_dim / width))
+    else:
+        new_height = max_dim
+        new_width = int(width * (max_dim / height))
+
+    logger.info(f"Resizing image from {width}x{height} to {new_width}x{new_height} (max dimension: {max_dim})")
+
+    # Convert to PIL, resize with LANCZOS, convert back
+    pil_image = Image.fromarray(image)
+    resized_pil = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+    return np.array(resized_pil)
+
+
 # Theme configuration
 THEME = gr.themes.Soft(
     primary_hue="purple",
@@ -97,6 +141,10 @@ def process_necklace(person_image: Optional[np.ndarray],
     if jewelry_image is None:
         return None, "Please upload a necklace image."
 
+    # Resize images if needed to prevent "image too large" errors
+    person_image = resize_image_if_needed(person_image)
+    jewelry_image = resize_image_if_needed(jewelry_image)
+
     # Convert numpy to PIL
     person_pil = Image.fromarray(person_image)
     jewelry_pil = Image.fromarray(jewelry_image)
@@ -119,6 +167,10 @@ def process_earrings(person_image: Optional[np.ndarray],
     if jewelry_image is None:
         return None, "Please upload an earring image."
 
+    # Resize images if needed to prevent "image too large" errors
+    person_image = resize_image_if_needed(person_image)
+    jewelry_image = resize_image_if_needed(jewelry_image)
+
     person_pil = Image.fromarray(person_image)
     jewelry_pil = Image.fromarray(jewelry_image)
 
@@ -138,6 +190,10 @@ def process_maang_tikka(person_image: Optional[np.ndarray],
         return None, "Please upload a person photo."
     if jewelry_image is None:
         return None, "Please upload a maang tikka image."
+
+    # Resize images if needed to prevent "image too large" errors
+    person_image = resize_image_if_needed(person_image)
+    jewelry_image = resize_image_if_needed(jewelry_image)
 
     person_pil = Image.fromarray(person_image)
     jewelry_pil = Image.fromarray(jewelry_image)
@@ -160,6 +216,10 @@ def process_nose_ring(person_image: Optional[np.ndarray],
         return None, "Please upload a person photo."
     if jewelry_image is None:
         return None, "Please upload a nose ring image."
+
+    # Resize images if needed to prevent "image too large" errors
+    person_image = resize_image_if_needed(person_image)
+    jewelry_image = resize_image_if_needed(jewelry_image)
 
     person_pil = Image.fromarray(person_image)
     jewelry_pil = Image.fromarray(jewelry_image)
@@ -204,6 +264,10 @@ def process_garment_tryon(person_image: Optional[np.ndarray],
         return None, "Please upload a person photo."
     if garment_image is None:
         return None, "Please upload a garment image."
+
+    # Resize images if needed to prevent "image too large" errors
+    person_image = resize_image_if_needed(person_image)
+    garment_image = resize_image_if_needed(garment_image)
 
     # Placeholder response - replace with actual IDM-VTON integration
     return None, "Garment try-on is coming soon! This feature requires IDM-VTON model integration."
