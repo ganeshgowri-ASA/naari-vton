@@ -1,0 +1,398 @@
+{
+  "token": "JEWELRYVTON",
+  "resolution": 1024,
+  "total_samples": 97,
+  "by_type": {
+    "jewelry": 97
+  },
+  "samples": [
+    {
+      "path": "dataset/training_prepared/jewelry_81c17c4e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_f84c3e28.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_5747097a.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_cbac1a68.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_17ce18b8.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_9191e9c3.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_26a15516.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_9a269bd3.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_d03e598f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_301d132b.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_710b7e13.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_61a29a90.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_60fe2895.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_f9c0df8f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_417ef445.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_a85f4d63.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_c6be3ca3.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_1c84902c.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_c9f14f6f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_659499eb.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_d2b4c0d0.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_538d837c.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_1075f763.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_5b340f05.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_075f0154.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_fcf55f03.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_63c94045.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_d0100c4e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_697faf39.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_59ed3a3f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_f4235355.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_1d4cd83d.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_902abf7f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_ccf94dd7.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_c0b587f2.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_db7f6486.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_54603cf2.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_fbf37fca.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_2d96942b.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_dd4d2225.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_43040f8a.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_60962acd.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_829faf2f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_3d5a686f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_36b01874.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_cb55e2ef.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_594fa7ba.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_985d5117.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_005f37b0.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_355d0594.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_a08c5753.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_21acb412.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_01cbb4f7.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_35659949.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_4e7e5e3e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_a72be7d3.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_76df0764.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_aa9403db.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_e1102ba0.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_4f2eee00.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_ce3df6c7.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_a31f82ee.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_0ebb1776.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_ef9ccdf6.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_36c8a62e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_1898cd9f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_9f4ffee0.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_a91ce77d.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_b9dca41c.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_4a78fdd4.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_a52422bf.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_2ba8205f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_1a4ae74f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_b1bd3ae8.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_c352dab9.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_d345b667.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_549668fb.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_24aa9d68.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_b7319afd.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_d4269e75.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_96db742f.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_eac1379e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_304efbbd.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_4519e568.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_7fbcf87b.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_ddc2511e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_d841a44e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_ef9f0b3e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_edc0f1b3.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_3e416b35.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_2a2a2d5e.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_50c9f2e6.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_68aed804.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_edb09a74.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_3380d2c1.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_880d2121.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    },
+    {
+      "path": "dataset/training_prepared/jewelry_6ac295f2.jpg",
+      "caption": "a photo of JEWELRYVTON jewelry"
+    }
+  ]
+}
